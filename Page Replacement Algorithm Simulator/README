@@ -1,0 +1,75 @@
+# 537pfsim
+
+1. Module
+  - Input (Parsing and reading in the trace file).
+  - Process table (Queue of page entries)
+  - Page Table (Binary Tree)
+  - Inverted (Array where index is ppn and each entry is pid, vpn, ref bit, pointer to the page table, pointer to the ref queue)
+  - Disk Queue (When the trace encounters cold miss, it is placed to disk queue and wait 2ms before it actually gets mapped)
+  - Stats (Printing out the necessary stats, such as AMU, ARP, TMR, TPI, RTime, and ExecTime)
+  - Queue (Commonly used for freelist, process table, and other structures necessary to store info)
+  - QueueDLL (Doulbly linked list comonly used for the replacement algorithms' ref queues)
+  - FIFO Algorithm
+  - LRU Algorithm
+  - Clock Algorithm
+  - Main
+
+
+2. Specification/Piazza Notes
+  1) Reading tracefiles
+    - Each line in the trace file will contain two decimal integers.
+    - There can be zero or more spaces before the first integer.
+    - There can be one or more spaces between the integers.
+    - There can be zero or more spaces after the second integer.
+    - You need to check that each number is made up only by decimal digits before you convert it.
+    - Any line that contains anything else is an error and error should be report and the program exits.
+
+3. Program Information
+  1) While a simulator is running:
+    - A successful memory reference will advance the simulated time by 1ns.
+    - The proces will block until I/O is completed when encountered a page fault.
+    - The process completes afeter executing the last memory reference in the trace file for that process. 
+      Frees up all the references in the page table, inverted page table, and reference queue that is used for the replacement algorithms.
+      i) Update the various performance statistics.
+      ii) Remove the process from any run/ready queues.
+    - The process becomes runable again when completed its I/O
+  2) Details on simulator (assumption):
+    - All references are reads.
+    - Memory references take 1ns. Trasnferring a page from disk to memory takes 2 ms.
+    - Memory stats out empty and all page frames free.
+      i) Only keep track of memory used by "processes" not OS kernel
+    - Only one disk.
+      i) Requests for pages should be queued.
+      ii) Disk can do only one read at a time.
+    - Assume it takes 0 time to start a disk I/O or handle its completion.
+    - Don't account for context switch time.
+    - 2 passes over the trace file.
+      i) First pass: finding all the PID's of each process.
+      ii) Second pass: marking the start and end of execution (first and last memory reference).
+      iii) A process is considered to have terminated after its last memory reference in the trace file.
+    - Do not read all the traces into a data structure at one time.
+    - The process is blocked when encountered page fault until the page is loaded. however continue to process memory references from other unblocked processes.
+      i) Use fseek() to move around in the file.
+      ii) Use ftell() to get the value of your current position in a file.
+    - Remember where you were in the trace file for the blocked process.
+    - Process the earliest unprocessed trace in the file for a runable process.
+  3) Simulator parameters:
+    - "-p" : page size in bytes of a power of two.
+      i) default: 4096 bytes
+    - "-m" : real memory size in MB.
+      i) default: 1MB
+  4) Performance statistics:
+    - Average Memory Utilization: for each clock tick, examine how many page frames are occupied and average this over each clock tick that the simulator runs. 
+      Finally divide the average by the total number of page frames to get a fraction.
+    - Average Runable Processes: the average of the number of processes that are running (or runable). Averaged over each clock tick for which the simulaor runs. 
+      All processes are runable at the beginning and gets marked as "ran" by assigning -1 to each process's state.
+    - Total Memory References: a count of the total number of memory references in the trace file.
+    - Total Page Ins: a total number of page faults.
+    - Rtime: the accumulated time for the running time of simulator. Same as the total number of clock ticks.
+    - ExecTime: The real time that the program runs and completes, printed to 2 decimal points.
+    
+  5) Page Replacement Algorithms:
+    - FIFO: It always pops out the very first referenced trace from the reference queue (which is doubly linked list).
+    - LRU: It always pops out the head of the referenced trace that is the least recent referenced trace.
+    - Clock: The hand is used to check the reference bit for each trace in the reference queue. If the trace has ref bit of 1, mark it 0 and move to next trace.
+             When found the trace with ref bit 0, replace it with the one we are interested. 
